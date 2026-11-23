@@ -1,0 +1,11 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "name": "Cadastro de Clientes (TDD) – Documentação da API",
+  "readme": "README.md",
+  "tsconfig": "tsconfig.json",
+  "excludePrivate": true,
+  "validation": { "notExported": true, "invalidLink": true, "notDocumented": true },
+  "treatValidationWarningsAsErrors": true
+}

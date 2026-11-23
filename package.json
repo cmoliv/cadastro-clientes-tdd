@@ -1,0 +1,22 @@
+{
+  "name": "cadastro-clientes-tdd",
+  "version": "1.0.0",
+  "description": "CRUD de cadastro de clientes em TypeScript desenvolvido com TDD",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "docs": "typedoc"
+  },
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.1",
+    "typedoc": "^0.28.20",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.1"
+  }
+}
