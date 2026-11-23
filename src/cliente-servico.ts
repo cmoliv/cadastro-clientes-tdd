@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Cliente } from './cliente';
 import { normalizarCpf, validarCpf } from './cpf';
 import { validarEmail } from './email';
-import { ClienteInvalidoError } from './erros';
+import { ClienteDuplicadoError, ClienteInvalidoError } from './erros';
 import type { RepositorioClientes } from './repositorio';
 
 /** Dados necessários para cadastrar um cliente. */
@@ -66,12 +66,20 @@ export class ClienteServico {
       throw new ClienteInvalidoError('cpf', 'O CPF informado é inválido.');
     }
 
+    const cpf = normalizarCpf(dados.cpf);
+    if (await this.repositorio.buscarPorEmail(email)) {
+      throw new ClienteDuplicadoError('email', 'Já existe um cliente com este e-mail.');
+    }
+    if (await this.repositorio.buscarPorCpf(cpf)) {
+      throw new ClienteDuplicadoError('cpf', 'Já existe um cliente com este CPF.');
+    }
+
     const instante = this.agora();
     const cliente: Cliente = {
       id: this.gerarId(),
       nome,
       email,
-      cpf: normalizarCpf(dados.cpf),
+      cpf,
       ...(dados.telefone !== undefined && { telefone: dados.telefone }),
       criadoEm: instante,
       atualizadoEm: instante,
