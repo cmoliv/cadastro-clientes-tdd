@@ -119,6 +119,17 @@ export class ClienteServico {
   }
 
   /**
+   * Remove um cliente.
+   *
+   * @param id - Identificador do cliente.
+   * @throws {@link ClienteNaoEncontradoError} Se não existir cliente com o `id`.
+   */
+  async remover(id: string): Promise<void> {
+    const removido = await this.repositorio.remover(id);
+    if (!removido) throw new ClienteNaoEncontradoError(id);
+  }
+
+  /**
    * Lista todos os clientes ordenados pelo nome.
    *
    * @returns Os clientes cadastrados, em ordem alfabética.
