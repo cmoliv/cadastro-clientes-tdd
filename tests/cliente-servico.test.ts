@@ -241,3 +241,20 @@ describe('ClienteServico.remover', () => {
     await expect(servico.criar(ANA)).resolves.toMatchObject({ email: ANA.email });
   });
 });
+
+describe('ClienteServico – dependências padrão', () => {
+  it('gera um UUID e usa a data atual quando nenhuma dependência é injetada', async () => {
+    const servico = new ClienteServico(new RepositorioEmMemoria());
+    const antes = Date.now();
+    const cliente = await servico.criar(ANA);
+    expect(cliente.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(cliente.criadoEm.getTime()).toBeGreaterThanOrEqual(antes);
+  });
+
+  it('atualiza o telefone quando ele é informado', async () => {
+    const { servico } = criarServico();
+    const ana = await servico.criar(ANA);
+    const atualizado = await servico.atualizar(ana.id, { telefone: '(73) 98888-7777' });
+    expect(atualizado.telefone).toBe('(73) 98888-7777');
+  });
+});

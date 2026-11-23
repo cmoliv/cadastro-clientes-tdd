@@ -21,6 +21,10 @@ describe('validarCpf', () => {
   it('aceita CPF válido formatado com pontos e traço', () => {
     expect(validarCpf('529.982.247-25')).toBe(true);
   });
+
+  it('aceita CPF cujo cálculo resulta em resto 10 (dígito verificador 0)', () => {
+    expect(validarCpf('12345678909')).toBe(true);
+  });
 });
 
 describe('normalizarCpf', () => {
