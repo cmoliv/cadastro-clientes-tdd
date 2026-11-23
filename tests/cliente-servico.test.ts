@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ClienteServico } from '../src/cliente-servico';
-import { ClienteDuplicadoError, ClienteInvalidoError } from '../src/erros';
+import {
+  ClienteDuplicadoError,
+  ClienteInvalidoError,
+  ClienteNaoEncontradoError,
+} from '../src/erros';
 import { RepositorioEmMemoria } from '../src/repositorio-em-memoria';
 
 const AGORA = new Date('2026-03-01T12:00:00Z');
@@ -16,6 +20,7 @@ function criarServico() {
 }
 
 const ANA = { nome: 'Ana Silva', email: 'ana@exemplo.com', cpf: '52998224725' };
+const BRUNO = { nome: 'Bruno Costa', email: 'bruno@exemplo.com', cpf: '11144477735' };
 
 describe('ClienteServico.criar', () => {
   let servico: ClienteServico;
@@ -89,7 +94,6 @@ describe('ClienteServico.criar – validação', () => {
 describe('ClienteServico.criar – unicidade', () => {
   let servico: ClienteServico;
   let repositorio: RepositorioEmMemoria;
-  const BRUNO = { nome: 'Bruno Costa', email: 'bruno@exemplo.com', cpf: '11144477735' };
 
   beforeEach(async () => {
     ({ servico, repositorio } = criarServico());
@@ -112,5 +116,35 @@ describe('ClienteServico.criar – unicidade', () => {
     const bruno = await servico.criar(BRUNO);
     expect(bruno.id).toBe('id-2');
     expect(await repositorio.listar()).toHaveLength(2);
+  });
+});
+
+describe('ClienteServico.buscarPorId', () => {
+  it('devolve o cliente cadastrado', async () => {
+    const { servico } = criarServico();
+    const criado = await servico.criar(ANA);
+    expect(await servico.buscarPorId(criado.id)).toEqual(criado);
+  });
+
+  it('lança ClienteNaoEncontradoError quando o id não existe', async () => {
+    const { servico } = criarServico();
+    const tentativa = servico.buscarPorId('inexistente');
+    await expect(tentativa).rejects.toBeInstanceOf(ClienteNaoEncontradoError);
+    await expect(tentativa).rejects.toMatchObject({ id: 'inexistente' });
+  });
+});
+
+describe('ClienteServico.listar', () => {
+  it('devolve lista vazia quando não há clientes', async () => {
+    const { servico } = criarServico();
+    expect(await servico.listar()).toEqual([]);
+  });
+
+  it('devolve os clientes ordenados pelo nome', async () => {
+    const { servico } = criarServico();
+    await servico.criar(BRUNO);
+    await servico.criar(ANA);
+    const nomes = (await servico.listar()).map((c) => c.nome);
+    expect(nomes).toEqual(['Ana Silva', 'Bruno Costa']);
   });
 });
