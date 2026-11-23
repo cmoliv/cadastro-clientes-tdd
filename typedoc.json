@@ -6,6 +6,7 @@
   "readme": "README.md",
   "tsconfig": "tsconfig.json",
   "excludePrivate": true,
+  "disableSources": true,
   "validation": { "notExported": true, "invalidLink": true, "notDocumented": true },
   "treatValidationWarningsAsErrors": true
 }
