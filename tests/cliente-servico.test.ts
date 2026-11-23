@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ClienteServico } from '../src/cliente-servico';
-import { ClienteInvalidoError } from '../src/erros';
+import { ClienteDuplicadoError, ClienteInvalidoError } from '../src/erros';
 import { RepositorioEmMemoria } from '../src/repositorio-em-memoria';
 
 const AGORA = new Date('2026-03-01T12:00:00Z');
@@ -83,5 +83,34 @@ describe('ClienteServico.criar – validação', () => {
   it('não persiste nada quando os dados são inválidos', async () => {
     await servico.criar({ ...ANA, nome: '' }).catch(() => undefined);
     expect(await repositorio.listar()).toEqual([]);
+  });
+});
+
+describe('ClienteServico.criar – unicidade', () => {
+  let servico: ClienteServico;
+  let repositorio: RepositorioEmMemoria;
+  const BRUNO = { nome: 'Bruno Costa', email: 'bruno@exemplo.com', cpf: '11144477735' };
+
+  beforeEach(async () => {
+    ({ servico, repositorio } = criarServico());
+    await servico.criar(ANA);
+  });
+
+  it('rejeita e-mail já cadastrado, ignorando maiúsculas', async () => {
+    const tentativa = servico.criar({ ...BRUNO, email: 'ANA@exemplo.com' });
+    await expect(tentativa).rejects.toBeInstanceOf(ClienteDuplicadoError);
+    await expect(tentativa).rejects.toMatchObject({ campo: 'email' });
+  });
+
+  it('rejeita CPF já cadastrado, mesmo com formatação diferente', async () => {
+    const tentativa = servico.criar({ ...BRUNO, cpf: '529.982.247-25' });
+    await expect(tentativa).rejects.toBeInstanceOf(ClienteDuplicadoError);
+    await expect(tentativa).rejects.toMatchObject({ campo: 'cpf' });
+  });
+
+  it('aceita um segundo cliente com e-mail e CPF diferentes', async () => {
+    const bruno = await servico.criar(BRUNO);
+    expect(bruno.id).toBe('id-2');
+    expect(await repositorio.listar()).toHaveLength(2);
   });
 });
