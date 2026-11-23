@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validarCpf } from '../src/cpf';
+import { normalizarCpf, validarCpf } from '../src/cpf';
 
 describe('validarCpf', () => {
   it('aceita um CPF válido (somente dígitos)', () => {
@@ -16,5 +16,15 @@ describe('validarCpf', () => {
 
   it('rejeita CPF com quantidade de dígitos diferente de 11', () => {
     expect(validarCpf('1234')).toBe(false);
+  });
+
+  it('aceita CPF válido formatado com pontos e traço', () => {
+    expect(validarCpf('529.982.247-25')).toBe(true);
+  });
+});
+
+describe('normalizarCpf', () => {
+  it('remove pontos, traços e espaços, mantendo só os dígitos', () => {
+    expect(normalizarCpf(' 529.982.247-25 ')).toBe('52998224725');
   });
 });
