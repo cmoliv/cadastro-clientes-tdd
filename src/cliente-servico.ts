@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Cliente } from './cliente';
-import { normalizarCpf } from './cpf';
+import { normalizarCpf, validarCpf } from './cpf';
+import { validarEmail } from './email';
+import { ClienteInvalidoError } from './erros';
 import type { RepositorioClientes } from './repositorio';
 
 /** Dados necessários para cadastrar um cliente. */
@@ -52,11 +54,23 @@ export class ClienteServico {
    * @returns O cliente criado, já com `id` e datas.
    */
   async criar(dados: NovoCliente): Promise<Cliente> {
+    const nome = dados.nome.trim();
+    const email = dados.email.trim().toLowerCase();
+    if (nome.length < 2) {
+      throw new ClienteInvalidoError('nome', 'O nome deve ter pelo menos 2 caracteres.');
+    }
+    if (!validarEmail(email)) {
+      throw new ClienteInvalidoError('email', 'O e-mail informado é inválido.');
+    }
+    if (!validarCpf(dados.cpf)) {
+      throw new ClienteInvalidoError('cpf', 'O CPF informado é inválido.');
+    }
+
     const instante = this.agora();
     const cliente: Cliente = {
       id: this.gerarId(),
-      nome: dados.nome.trim(),
-      email: dados.email.trim().toLowerCase(),
+      nome,
+      email,
       cpf: normalizarCpf(dados.cpf),
       ...(dados.telefone !== undefined && { telefone: dados.telefone }),
       criadoEm: instante,
