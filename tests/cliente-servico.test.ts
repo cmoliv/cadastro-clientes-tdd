@@ -216,3 +216,28 @@ describe('ClienteServico.atualizar', () => {
     expect((await servico.buscarPorId(idAna)).email).toBe('ana@exemplo.com');
   });
 });
+
+describe('ClienteServico.remover', () => {
+  it('remove o cliente e mantém os demais', async () => {
+    const { servico } = criarServico();
+    const ana = await servico.criar(ANA);
+    const bruno = await servico.criar(BRUNO);
+
+    await servico.remover(ana.id);
+
+    await expect(servico.buscarPorId(ana.id)).rejects.toBeInstanceOf(ClienteNaoEncontradoError);
+    expect(await servico.listar()).toEqual([bruno]);
+  });
+
+  it('lança ClienteNaoEncontradoError ao remover um id inexistente', async () => {
+    const { servico } = criarServico();
+    await expect(servico.remover('inexistente')).rejects.toBeInstanceOf(ClienteNaoEncontradoError);
+  });
+
+  it('libera o e-mail e o CPF para um novo cadastro', async () => {
+    const { servico } = criarServico();
+    const ana = await servico.criar(ANA);
+    await servico.remover(ana.id);
+    await expect(servico.criar(ANA)).resolves.toMatchObject({ email: ANA.email });
+  });
+});
