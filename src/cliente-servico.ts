@@ -28,6 +28,13 @@ export interface OpcoesClienteServico {
   agora?: () => Date;
 }
 
+/** Campos obrigatórios já normalizados (sem espaços, e-mail minúsculo, CPF só com dígitos). */
+interface DadosNormalizados {
+  nome: string;
+  email: string;
+  cpf: string;
+}
+
 /**
  * Regras de negócio do cadastro de clientes (CRUD).
  */
@@ -52,34 +59,18 @@ export class ClienteServico {
    *
    * @param dados - Dados do cliente.
    * @returns O cliente criado, já com `id` e datas.
+   * @throws {@link ClienteInvalidoError} Se nome, e-mail ou CPF forem inválidos.
+   * @throws {@link ClienteDuplicadoError} Se o e-mail ou CPF já estiverem cadastrados.
    */
   async criar(dados: NovoCliente): Promise<Cliente> {
-    const nome = dados.nome.trim();
-    const email = dados.email.trim().toLowerCase();
-    if (nome.length < 2) {
-      throw new ClienteInvalidoError('nome', 'O nome deve ter pelo menos 2 caracteres.');
-    }
-    if (!validarEmail(email)) {
-      throw new ClienteInvalidoError('email', 'O e-mail informado é inválido.');
-    }
-    if (!validarCpf(dados.cpf)) {
-      throw new ClienteInvalidoError('cpf', 'O CPF informado é inválido.');
-    }
-
-    const cpf = normalizarCpf(dados.cpf);
-    if (await this.repositorio.buscarPorEmail(email)) {
-      throw new ClienteDuplicadoError('email', 'Já existe um cliente com este e-mail.');
-    }
-    if (await this.repositorio.buscarPorCpf(cpf)) {
-      throw new ClienteDuplicadoError('cpf', 'Já existe um cliente com este CPF.');
-    }
+    const normalizados = normalizar(dados);
+    validar(normalizados);
+    await this.garantirUnicidade(normalizados);
 
     const instante = this.agora();
     const cliente: Cliente = {
       id: this.gerarId(),
-      nome,
-      email,
-      cpf,
+      ...normalizados,
       ...(dados.telefone !== undefined && { telefone: dados.telefone }),
       criadoEm: instante,
       atualizadoEm: instante,
@@ -113,33 +104,13 @@ export class ClienteServico {
    */
   async atualizar(id: string, alteracoes: Partial<NovoCliente>): Promise<Cliente> {
     const atual = await this.buscarPorId(id);
-    const nome = alteracoes.nome !== undefined ? alteracoes.nome.trim() : atual.nome;
-    const email = alteracoes.email !== undefined ? alteracoes.email.trim().toLowerCase() : atual.email;
-    const cpf = alteracoes.cpf !== undefined ? normalizarCpf(alteracoes.cpf) : atual.cpf;
-
-    if (nome.length < 2) {
-      throw new ClienteInvalidoError('nome', 'O nome deve ter pelo menos 2 caracteres.');
-    }
-    if (!validarEmail(email)) {
-      throw new ClienteInvalidoError('email', 'O e-mail informado é inválido.');
-    }
-    if (!validarCpf(cpf)) {
-      throw new ClienteInvalidoError('cpf', 'O CPF informado é inválido.');
-    }
-    const comEmail = await this.repositorio.buscarPorEmail(email);
-    if (comEmail && comEmail.id !== id) {
-      throw new ClienteDuplicadoError('email', 'Já existe um cliente com este e-mail.');
-    }
-    const comCpf = await this.repositorio.buscarPorCpf(cpf);
-    if (comCpf && comCpf.id !== id) {
-      throw new ClienteDuplicadoError('cpf', 'Já existe um cliente com este CPF.');
-    }
+    const normalizados = normalizar({ ...atual, ...alteracoes });
+    validar(normalizados);
+    await this.garantirUnicidade(normalizados, id);
 
     const atualizado: Cliente = {
       ...atual,
-      nome,
-      email,
-      cpf,
+      ...normalizados,
       ...(alteracoes.telefone !== undefined && { telefone: alteracoes.telefone }),
       atualizadoEm: this.agora(),
     };
@@ -155,5 +126,42 @@ export class ClienteServico {
   async listar(): Promise<Cliente[]> {
     const clientes = await this.repositorio.listar();
     return clientes.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  /**
+   * Garante que e-mail e CPF não pertencem a outro cliente.
+   *
+   * @param dados - Dados já normalizados.
+   * @param idIgnorado - Cliente que está sendo atualizado (não conta como duplicado).
+   */
+  private async garantirUnicidade(dados: DadosNormalizados, idIgnorado?: string): Promise<void> {
+    const comEmail = await this.repositorio.buscarPorEmail(dados.email);
+    if (comEmail && comEmail.id !== idIgnorado) {
+      throw new ClienteDuplicadoError('email', 'Já existe um cliente com este e-mail.');
+    }
+    const comCpf = await this.repositorio.buscarPorCpf(dados.cpf);
+    if (comCpf && comCpf.id !== idIgnorado) {
+      throw new ClienteDuplicadoError('cpf', 'Já existe um cliente com este CPF.');
+    }
+  }
+}
+
+function normalizar(dados: DadosNormalizados): DadosNormalizados {
+  return {
+    nome: dados.nome.trim(),
+    email: dados.email.trim().toLowerCase(),
+    cpf: normalizarCpf(dados.cpf),
+  };
+}
+
+function validar(dados: DadosNormalizados): void {
+  if (dados.nome.length < 2) {
+    throw new ClienteInvalidoError('nome', 'O nome deve ter pelo menos 2 caracteres.');
+  }
+  if (!validarEmail(dados.email)) {
+    throw new ClienteInvalidoError('email', 'O e-mail informado é inválido.');
+  }
+  if (!validarCpf(dados.cpf)) {
+    throw new ClienteInvalidoError('cpf', 'O CPF informado é inválido.');
   }
 }
