@@ -12,11 +12,15 @@ const AGORA = new Date('2026-03-01T12:00:00Z');
 function criarServico() {
   const repositorio = new RepositorioEmMemoria();
   let contador = 0;
+  let instante = AGORA;
   const servico = new ClienteServico(repositorio, {
     gerarId: () => `id-${++contador}`,
-    agora: () => AGORA,
+    agora: () => instante,
   });
-  return { servico, repositorio };
+  const definirAgora = (novo: Date) => {
+    instante = novo;
+  };
+  return { servico, repositorio, definirAgora };
 }
 
 const ANA = { nome: 'Ana Silva', email: 'ana@exemplo.com', cpf: '52998224725' };
@@ -146,5 +150,69 @@ describe('ClienteServico.listar', () => {
     await servico.criar(ANA);
     const nomes = (await servico.listar()).map((c) => c.nome);
     expect(nomes).toEqual(['Ana Silva', 'Bruno Costa']);
+  });
+});
+
+describe('ClienteServico.atualizar', () => {
+  const DEPOIS = new Date('2026-03-05T08:30:00Z');
+  let servico: ClienteServico;
+  let definirAgora: (novo: Date) => void;
+  let idAna: string;
+
+  beforeEach(async () => {
+    ({ servico, definirAgora } = criarServico());
+    idAna = (await servico.criar(ANA)).id;
+    await servico.criar(BRUNO);
+    definirAgora(DEPOIS);
+  });
+
+  it('altera apenas os campos informados e atualiza a data de alteração', async () => {
+    const atualizado = await servico.atualizar(idAna, { nome: 'Ana Souza' });
+
+    expect(atualizado).toMatchObject({
+      id: idAna,
+      nome: 'Ana Souza',
+      email: 'ana@exemplo.com',
+      cpf: '52998224725',
+      criadoEm: AGORA,
+      atualizadoEm: DEPOIS,
+    });
+    expect(await servico.buscarPorId(idAna)).toEqual(atualizado);
+  });
+
+  it('normaliza e-mail e CPF alterados', async () => {
+    const atualizado = await servico.atualizar(idAna, {
+      email: ' NOVA@Exemplo.com ',
+      cpf: '529.982.247-25',
+    });
+    expect(atualizado.email).toBe('nova@exemplo.com');
+    expect(atualizado.cpf).toBe('52998224725');
+  });
+
+  it('permite manter o próprio e-mail e CPF sem acusar duplicidade', async () => {
+    const atualizado = await servico.atualizar(idAna, { email: 'ana@exemplo.com', cpf: '52998224725' });
+    expect(atualizado.id).toBe(idAna);
+  });
+
+  it('lança ClienteNaoEncontradoError quando o cliente não existe', async () => {
+    await expect(servico.atualizar('inexistente', { nome: 'Fulano' })).rejects.toBeInstanceOf(
+      ClienteNaoEncontradoError,
+    );
+  });
+
+  it('valida os campos alterados', async () => {
+    await expect(servico.atualizar(idAna, { nome: 'A' })).rejects.toMatchObject({ campo: 'nome' });
+    await expect(servico.atualizar(idAna, { email: 'x' })).rejects.toMatchObject({ campo: 'email' });
+    await expect(servico.atualizar(idAna, { cpf: '123' })).rejects.toMatchObject({ campo: 'cpf' });
+  });
+
+  it('rejeita e-mail ou CPF que já pertencem a outro cliente', async () => {
+    await expect(servico.atualizar(idAna, { email: 'bruno@exemplo.com' })).rejects.toMatchObject({
+      campo: 'email',
+    });
+    await expect(servico.atualizar(idAna, { cpf: '111.444.777-35' })).rejects.toMatchObject({
+      campo: 'cpf',
+    });
+    expect((await servico.buscarPorId(idAna)).email).toBe('ana@exemplo.com');
   });
 });
