@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Cliente } from './cliente';
 import { normalizarCpf, validarCpf } from './cpf';
 import { validarEmail } from './email';
-import { ClienteDuplicadoError, ClienteInvalidoError } from './erros';
+import { ClienteDuplicadoError, ClienteInvalidoError, ClienteNaoEncontradoError } from './erros';
 import type { RepositorioClientes } from './repositorio';
 
 /** Dados necessários para cadastrar um cliente. */
@@ -86,5 +86,28 @@ export class ClienteServico {
     };
     await this.repositorio.salvar(cliente);
     return cliente;
+  }
+
+  /**
+   * Busca um cliente pelo identificador.
+   *
+   * @param id - Identificador do cliente.
+   * @returns O cliente encontrado.
+   * @throws {@link ClienteNaoEncontradoError} Se não existir cliente com o `id`.
+   */
+  async buscarPorId(id: string): Promise<Cliente> {
+    const cliente = await this.repositorio.buscarPorId(id);
+    if (!cliente) throw new ClienteNaoEncontradoError(id);
+    return cliente;
+  }
+
+  /**
+   * Lista todos os clientes ordenados pelo nome.
+   *
+   * @returns Os clientes cadastrados, em ordem alfabética.
+   */
+  async listar(): Promise<Cliente[]> {
+    const clientes = await this.repositorio.listar();
+    return clientes.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
 }

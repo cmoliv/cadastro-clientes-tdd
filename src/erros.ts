@@ -4,6 +4,19 @@
 export type CampoCliente = 'nome' | 'email' | 'cpf';
 
 /**
+ * Lançado quando nenhum cliente existe com o identificador informado.
+ */
+export class ClienteNaoEncontradoError extends Error {
+  /**
+   * @param id - Identificador que não foi encontrado.
+   */
+  constructor(public readonly id: string) {
+    super(`Cliente não encontrado: ${id}`);
+    this.name = 'ClienteNaoEncontradoError';
+  }
+}
+
+/**
  * Lançado quando um valor que deve ser único já pertence a outro cliente.
  */
 export class ClienteDuplicadoError extends Error {
